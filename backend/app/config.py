@@ -12,10 +12,13 @@ class Settings(BaseSettings):
     # Supabase
     supabase_url: str
     supabase_anon_key: str
-    supabase_service_role_key: str
+    supabase_service_key: str              # service-role key (bypasses RLS)
 
     # Anthropic
     anthropic_api_key: str
+
+    # Resend (email)
+    resend_api_key: str = ""
 
     # CORS — comma-separated origins
     cors_origins: str = "http://localhost:3000"

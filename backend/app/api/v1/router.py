@@ -1,11 +1,12 @@
 from fastapi import APIRouter
 
+from app.api.v1.companies import router as companies_router
+from app.api.v1.scraper import router as scraper_router
+
 router = APIRouter()
 
-
-# Mount feature routers here as they are built, e.g.:
-# from app.api.v1 import startups, signals, analysis
-# router.include_router(startups.router, prefix="/startups", tags=["startups"])
+router.include_router(companies_router, prefix="/companies", tags=["companies"])
+router.include_router(scraper_router, prefix="/scraper", tags=["scraper"])
 
 
 @router.get("/ping")

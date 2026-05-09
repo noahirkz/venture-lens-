@@ -1,7 +1,8 @@
-import type { NextConfig } from "next";
+import path from 'path'
+import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
-  // Add Next.js config here as needed
-};
+  outputFileTracingRoot: path.join(__dirname, '../../'),
+}
 
-export default nextConfig;
+export default nextConfig

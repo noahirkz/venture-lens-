@@ -1,30 +1,27 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "./globals.css";
+import type { Metadata } from 'next'
+import { Syne } from 'next/font/google'
+import './globals.css'
+import { Nav } from '@/components/Nav'
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const syne = Syne({
+  subsets: ['latin'],
+  variable: '--font-syne',
+  weight: ['400', '500', '600', '700', '800'],
+  display: 'swap',
+})
 
 export const metadata: Metadata = {
-  title: "VentureLens",
-  description: "AI startup intelligence platform",
-};
+  title: { default: 'VentureLens', template: '%s — VentureLens' },
+  description: 'AI startup intelligence for venture capital',
+}
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+    <html lang="en" className={syne.variable}>
+      <body>
+        <Nav />
         {children}
       </body>
     </html>
-  );
+  )
 }

@@ -1,6 +1,6 @@
 # VentureLens
 
-AI startup intelligence platform — monorepo.
+AI Search engine that allows founder and investor to find the next billion bet
 
 ## Stack
 

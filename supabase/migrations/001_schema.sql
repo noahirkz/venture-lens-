@@ -52,7 +52,7 @@ create table funding_events (
   event_date  date,
   round_type  text,
   amount_usd  bigint,
-  investors   text[],
+  investors   text,
   source_url  text,
   created_at  timestamptz not null default now()
 );

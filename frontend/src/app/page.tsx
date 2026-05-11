@@ -1,8 +1,11 @@
 import Link from 'next/link'
-import { api } from '@/lib/api'
+import { serverApi } from '@/lib/api-server'
 import type { Company } from '@/types/company'
 import { ScoreBadge } from '@/components/ui/ScoreBadge'
 import { SourceBadge } from '@/components/ui/SourceBadge'
+
+// Per-user rate limit means we can't statically cache; render fresh.
+export const dynamic = 'force-dynamic'
 
 function computeStats(companies: Company[]) {
   const scored = companies.filter((c) => c.score !== null)
@@ -25,7 +28,7 @@ export default async function Home() {
   let error = false
 
   try {
-    companies = await api.companies.list()
+    companies = await serverApi.companies.list()
   } catch {
     error = true
   }

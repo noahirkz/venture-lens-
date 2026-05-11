@@ -1,13 +1,16 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { api } from '@/lib/api'
+import { serverApi } from '@/lib/api-server'
 import { ScoreRing } from '@/components/ui/ScoreRing'
 import { SignalBars } from '@/components/ui/SignalBars'
 import { SourceBadge } from '@/components/ui/SourceBadge'
 
+// Per-user rate limit means we can't statically cache; render fresh.
+export const dynamic = 'force-dynamic'
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
-  const company = await api.companies.get(id).catch(() => null)
+  const company = await serverApi.companies.get(id).catch(() => null)
   return { title: company?.name ?? 'Company' }
 }
 
@@ -35,7 +38,7 @@ export default async function CompanyDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
-  const company = await api.companies.get(id).catch(() => null)
+  const company = await serverApi.companies.get(id).catch(() => null)
   if (!company) notFound()
 
   const summary = company.raw_data?.summary

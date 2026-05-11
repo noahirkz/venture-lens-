@@ -1,0 +1,18 @@
+# Railway / Nixpacks build config — installs Chromium for Playwright.
+# Without this, /api/v1/scraper/run crashes because Playwright has no browser.
+
+[phases.setup]
+nixPkgs = ["python312", "uv"]
+
+[phases.install]
+cmds = [
+  "pip install --upgrade pip",
+  "pip install -e .",
+  # Browsers + system deps. Playwright tries to install via apt, which works on
+  # the Nixpacks ubuntu base. If you're running on a stripped image, add
+  # --with-deps and run `playwright install-deps` separately.
+  "python -m playwright install chromium",
+]
+
+[start]
+cmd = "python -m uvicorn app.main:app --host 0.0.0.0 --port $PORT"

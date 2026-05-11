@@ -7,9 +7,6 @@ Run `playwright install chromium` after pip install.
 
 import logging
 
-from playwright.async_api import TimeoutError as PWTimeout
-from playwright.async_api import async_playwright
-
 logger = logging.getLogger(__name__)
 
 _URL = "https://www.ycombinator.com/companies"
@@ -17,6 +14,10 @@ _TIMEOUT = 30_000  # ms
 
 
 async def scrape_yc() -> list[dict]:
+    # Lazy import so module import doesn't require playwright at runtime/test time.
+    from playwright.async_api import TimeoutError as PWTimeout
+    from playwright.async_api import async_playwright
+
     results: list[dict] = []
 
     async with async_playwright() as pw:

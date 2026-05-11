@@ -6,8 +6,8 @@ import { ScoreRing } from '@/components/ui/ScoreRing'
 import { SignalBars } from '@/components/ui/SignalBars'
 import { SourceBadge } from '@/components/ui/SourceBadge'
 import Link from 'next/link'
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000'
+import { api, type ApiError } from '@/lib/api'
+import { useAuth } from '@/lib/auth-context'
 
 const STEPS = [
   'Scraping web…',
@@ -15,15 +15,33 @@ const STEPS = [
   'Scoring signals…',
 ]
 
-type State = 'idle' | 'loading' | 'done' | 'error'
+type State = 'idle' | 'loading' | 'done' | 'error' | 'rate_limited'
+
+type RateError = {
+  scope: 'user' | 'anon'
+  limit: number
+  resetAt: string
+  message: string
+}
+
+function fmtResetIn(resetIso: string): string {
+  if (!resetIso) return ''
+  const ms = new Date(resetIso).getTime() - Date.now()
+  if (Number.isNaN(ms) || ms <= 0) return 'now'
+  const h = Math.floor(ms / 3_600_000)
+  const m = Math.floor((ms % 3_600_000) / 60_000)
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
 
 export default function AnalyzePage() {
+  const { user } = useAuth()
   const [form, setForm] = useState({ name: '', description: '', website: '' })
   const [state, setState] = useState<State>('idle')
   const [stepIdx, setStepIdx] = useState(-1)
   const [doneSteps, setDoneSteps] = useState<number[]>([])
   const [result, setResult] = useState<Company | null>(null)
   const [errorMsg, setErrorMsg] = useState('')
+  const [rateError, setRateError] = useState<RateError | null>(null)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
@@ -35,6 +53,7 @@ export default function AnalyzePage() {
 
     setState('loading')
     setResult(null)
+    setRateError(null)
     setDoneSteps([])
     setStepIdx(0)
 
@@ -45,18 +64,7 @@ export default function AnalyzePage() {
       setDoneSteps([0])
       setStepIdx(1)
 
-      const res = await fetch(`${API_BASE}/api/v1/companies/analyze`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
-      })
-
-      if (!res.ok) {
-        const body = await res.text().catch(() => '')
-        throw new Error(body || `${res.status}`)
-      }
-
-      const data: Company = await res.json()
+      const data = await api.companies.analyze(form)
 
       setDoneSteps([0, 1])
       setStepIdx(2)
@@ -67,8 +75,23 @@ export default function AnalyzePage() {
       setResult(data)
       setState('done')
     } catch (err) {
-      setState('error')
-      setErrorMsg(err instanceof Error ? err.message : 'Unknown error')
+      const apiErr = err as ApiError
+      if (apiErr?.rateLimited) {
+        const detailObj =
+          apiErr.body && typeof apiErr.body === 'object'
+            ? ((apiErr.body as Record<string, unknown>).detail as Record<string, unknown> | undefined)
+            : undefined
+        setRateError({
+          scope: apiErr.rate?.scope ?? (user ? 'user' : 'anon'),
+          limit: apiErr.rate?.limit ?? Number(detailObj?.limit ?? 0),
+          resetAt: apiErr.rate?.reset_at ?? String(detailObj?.reset_at ?? ''),
+          message: apiErr.message,
+        })
+        setState('rate_limited')
+      } else {
+        setState('error')
+        setErrorMsg(apiErr?.message || (err instanceof Error ? err.message : 'Unknown error'))
+      }
     }
   }
 
@@ -78,6 +101,7 @@ export default function AnalyzePage() {
     setStepIdx(-1)
     setDoneSteps([])
     setErrorMsg('')
+    setRateError(null)
   }
 
   const summary = result?.raw_data?.summary
@@ -93,7 +117,7 @@ export default function AnalyzePage() {
       </div>
 
       {/* ── Input form ─────────────────────────────────────────────── */}
-      {state !== 'done' && (
+      {state !== 'done' && state !== 'rate_limited' && (
         <form onSubmit={handleSubmit} className="space-y-4 mb-8">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="flex flex-col gap-1.5">
@@ -198,6 +222,36 @@ export default function AnalyzePage() {
           >
             Try again
           </button>
+        </div>
+      )}
+
+      {/* ── Rate limited ───────────────────────────────────────────── */}
+      {state === 'rate_limited' && rateError && (
+        <div className="border border-acid/40 bg-acid/10 rounded-2xl p-6">
+          <p className="font-bold text-ink mb-1">
+            Daily limit reached ({rateError.limit}/day for{' '}
+            {rateError.scope === 'user' ? 'signed-in users' : 'guests'})
+          </p>
+          <p className="text-sm text-muted mb-4">
+            {rateError.message}
+            {rateError.resetAt && ` Resets in ${fmtResetIn(rateError.resetAt)}.`}
+          </p>
+          <div className="flex gap-2">
+            {rateError.scope === 'anon' && (
+              <Link
+                href="/signup?next=/analyze"
+                className="text-xs font-bold bg-acid text-ink px-4 py-2 rounded-lg hover:bg-acid/80 transition-colors uppercase tracking-wider"
+              >
+                Sign up for more →
+              </Link>
+            )}
+            <button
+              onClick={reset}
+              className="text-xs font-semibold border border-edge text-muted px-4 py-2 rounded-lg hover:border-ink hover:text-ink transition-colors uppercase tracking-wider"
+            >
+              Dismiss
+            </button>
+          </div>
         </div>
       )}
 

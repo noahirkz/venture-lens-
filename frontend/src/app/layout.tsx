@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Syne } from 'next/font/google'
 import './globals.css'
 import { Nav } from '@/components/Nav'
+import { AuthProvider } from '@/lib/auth-context'
 
 const syne = Syne({
   subsets: ['latin'],
@@ -19,8 +20,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={syne.variable}>
       <body>
-        <Nav />
-        {children}
+        <AuthProvider>
+          <Nav />
+          {children}
+        </AuthProvider>
       </body>
     </html>
   )

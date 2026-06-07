@@ -2,6 +2,7 @@
 // it pulls in `next/headers` and the cookie-aware Supabase client.
 // Use these in Server Components, Route Handlers, and Server Actions.
 
+import { cache } from 'react'
 import { headers as nextHeaders } from 'next/headers'
 import type { Company } from '@/types/company'
 import { API_BASE, parseError } from './api'
@@ -37,9 +38,15 @@ async function serverFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T
 }
 
+// React.cache() dedupes calls within a single request. Critical for SSR
+// pages where generateMetadata() and the page component both want the same
+// row — without this, every /companies/[id] view costs 2 rate-limit slots.
+const getCompanyCached = cache((id: string) => serverFetch<Company>(`/api/v1/companies/${id}`))
+const listCompaniesCached = cache(() => serverFetch<Company[]>('/api/v1/companies'))
+
 export const serverApi = {
   companies: {
-    list: () => serverFetch<Company[]>('/api/v1/companies'),
-    get: (id: string) => serverFetch<Company>(`/api/v1/companies/${id}`),
+    list: () => listCompaniesCached(),
+    get: (id: string) => getCompanyCached(id),
   },
 }

@@ -1,10 +1,11 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.api.v1.router import router as v1_router
 from app.config import settings
 from app.core.rate_limit import RateLimitResult
+from app.core.supabase import get_supabase
 
 
 class RateLimitHeadersMiddleware(BaseHTTPMiddleware):
@@ -50,3 +51,21 @@ app.include_router(v1_router, prefix="/api/v1")
 @app.get("/health")
 async def health() -> dict[str, str]:
     return {"status": "ok", "env": settings.app_env}
+
+
+@app.get("/health/ready")
+async def health_ready() -> dict[str, str]:
+    """Deep readiness probe — verifies Supabase is reachable (use for Railway healthchecks)."""
+    if not settings.supabase_url or not settings.supabase_service_key:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Supabase not configured",
+        )
+    try:
+        get_supabase().table("companies").select("id", count="exact").limit(0).execute()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Supabase unreachable: {exc}",
+        ) from exc
+    return {"status": "ready", "env": settings.app_env}
